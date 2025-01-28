@@ -30,19 +30,20 @@
 
 
 
-#if defined(PREFIX)
+#if defined(PG_PREFIX)
 #define em_xstr(s) em_str(s)
 #define em_str(s) #s
-#   define WASM_PREFIX em_xstr(PREFIX)
+#   define WASM_PREFIX em_xstr(PG_PREFIX)
 #   define PG_MAIN_INCLUDE em_xstr(PATCH_MAIN)
 #   define PG_PLUGIN_INCLUDE em_xstr(PATCH_PLUGIN
+#   undef PG_PREFIX
 #else
 #   define WASM_PREFIX "/pgdata"
 #   define PG_MAIN_INCLUDE "/pgdata/pg_main.c"
 #   define PG_PLUGIN_INCLUDE "/pgdata/pg_plugin.h"
 #endif
 
-#include <pg_debug.h>
+#include "pg_debug.h"
 
 // #define COPY_INTERNAL
 #define COPY_OFF
