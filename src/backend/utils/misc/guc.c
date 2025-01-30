@@ -1756,7 +1756,6 @@ SelectConfigFiles(const char *userDoption, const char *progname)
 	struct stat stat_buf;
 	struct config_string *data_directory_rec;
 
-
 	/* configdir is -D option, or $PGDATA if no -D */
 	if (userDoption)
 		configdir = make_absolute_path(userDoption);
@@ -1822,14 +1821,14 @@ SelectConfigFiles(const char *userDoption, const char *progname)
 		free(configdir);
 		return false;
 	}
-PDEBUG("# 1825");
+
 	/*
 	 * Read the configuration file for the first time.  This time only the
 	 * data_directory parameter is picked up to determine the data directory,
 	 * so that we can read the PG_AUTOCONF_FILENAME file next time.
 	 */
-PDEBUG("# 1831");
-PDEBUG("# 1832 ProcessConfigFile(PGC_POSTMASTER);");
+PDEBUG("# 1830 ProcessConfigFile(PGC_POSTMASTER);");
+
 	/*
 	 * If the data_directory GUC variable has been set, use that as DataDir;
 	 * otherwise use configdir if set; else punt.
@@ -1869,7 +1868,7 @@ PDEBUG("# 1832 ProcessConfigFile(PGC_POSTMASTER);");
 	 * since we have to determine the DataDir before we can find the autoconf
 	 * file, the alternatives seem worse.)
 	 */
-PDEBUG("# 1872	ProcessConfigFile(PGC_POSTMASTER);");
+PDEBUG("# 1871 ProcessConfigFile(PGC_POSTMASTER);");
 
 	/*
 	 * If timezone_abbreviations wasn't set in the configuration file, install
