@@ -100,48 +100,42 @@ extern int	pg_valid_server_encoding_id_private(int encoding);
 #define proc_exit(arg) pg_proc_exit(arg)
 
 
+
+
+#if defined(PGL_MAIN)
+#warning "PGL_MAIN"
 /*
  * popen is routed via pg_popen to stderr or a IDB_PIPE_* file
  * link a pclose replacement when we are in exec.c ( PG_EXEC defined )
  */
 
+extern FILE * pg_popen(const char *command, const char *type);
+#define popen(command, mode) pg_popen(command, mode)
 
-#if defined(PG_EXEC)
+extern int pg_pclose(FILE *stream);
 #define pclose(stream) pg_pclose(stream)
-#include <stdio.h> // FILE
 
-EMSCRIPTEN_KEEPALIVE FILE*
-SOCKET_FILE = NULL;
+#endif
 
-EMSCRIPTEN_KEEPALIVE int
-SOCKET_DATA = 0;
-
-EMSCRIPTEN_KEEPALIVE FILE*
-IDB_PIPE_FP = NULL;
-
-EMSCRIPTEN_KEEPALIVE int
-IDB_STAGE = 0;
-
-int pg_pclose(FILE *stream);
-
-int pg_pclose(FILE *stream) {
-    if (IDB_STAGE==1)
-        fprintf(stderr,"# pg_pclose(%s) 133:" __FILE__ "\n" , IDB_PIPE_BOOT);
-    if (IDB_STAGE==2)
-        fprintf(stderr,"# pg_pclose(%s) 135:" __FILE__ "\n" , IDB_PIPE_SINGLE);
-
-    if (IDB_PIPE_FP) {
-        fflush(IDB_PIPE_FP);
-        fclose(IDB_PIPE_FP);
-        IDB_PIPE_FP = NULL;
-    }
-    return 0;
-}
+#if defined(PGL_INITDB_MAIN)
 
 
-#endif // PG_EXEC
 
+// to override chmod()
+#include <sys/stat.h>
 
+extern int pg_chmod(const char * path, int mode_t);
+// initdb chmod is not supported by wasi, so just don't use it anywhere
+// #if defined(__wasi__)
+#define chmod(path, mode) pg_chmod(path, mode)
+//#endif
+
+#endif
+
+extern FILE* IDB_PIPE_FP;
+extern int IDB_STAGE;
+extern FILE* SOCKET_FILE;
+extern int SOCKET_DATA;
 
 /*
  * OpenPipeStream : another kind of pipe open in fd.c
