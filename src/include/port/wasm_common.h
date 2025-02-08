@@ -16,9 +16,7 @@
 #define WASM_USERNAME "postgres"
 #endif
 
-// MEMFS ok files
-#define IDB_PIPE_BOOT "/tmp/initdb.boot.txt"
-#define IDB_PIPE_SINGLE "/tmp/initdb.single.txt"
+
 
 /* --------------- how to configure those when installed ? ---------------- */
 
@@ -99,41 +97,10 @@ extern int	pg_valid_server_encoding_id_private(int encoding);
 
 #define proc_exit(arg) pg_proc_exit(arg)
 
-
-
-
-#if defined(PGL_MAIN)
-#warning "PGL_MAIN"
 /*
- * popen is routed via pg_popen to stderr or a IDB_PIPE_* file
- * link a pclose replacement when we are in exec.c ( PG_EXEC defined )
- */
-
-extern FILE * pg_popen(const char *command, const char *type);
-#define popen(command, mode) pg_popen(command, mode)
-
-extern int pg_pclose(FILE *stream);
-#define pclose(stream) pg_pclose(stream)
-
-#endif
-
-#if defined(PGL_INITDB_MAIN)
-
-
-
-// to override chmod()
-#include <sys/stat.h>
-
-extern int pg_chmod(const char * path, int mode_t);
-// initdb chmod is not supported by wasi, so just don't use it anywhere
-// #if defined(__wasi__)
-#define chmod(path, mode) pg_chmod(path, mode)
-//#endif
-
-#endif
-
 extern FILE* IDB_PIPE_FP;
 extern int IDB_STAGE;
+*/
 extern FILE* SOCKET_FILE;
 extern int SOCKET_DATA;
 
@@ -250,48 +217,5 @@ shmdt (const void *__shmaddr) {
 	return 0;
 }
 
-
-
-/*
-typedef struct {
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
-    int count;
-} sem_t;
-
-int sem_init(sem_t *sem, int pshared, unsigned int value){
-    if(pshared > 1) {
-        return -1;
-    }
-    sem->count = value;
-    pthread_mutex_init(&sem->mutex, NULL);
-    pthread_cond_init(&sem->cond, NULL);
-    return 0;
-}
-
-int sem_destroy(sem_t *sem){
-    pthread_mutex_destroy(&sem->mutex);
-    pthread_cond_destroy(&sem->cond);
-    return 0;
-}
-
-int sem_wait(sem_t *sem){
-    pthread_mutex_lock(&sem->mutex);
-    while(sem->count == 0){
-        pthread_cond_wait(&sem->cond, &sem->mutex);
-    }
-    sem->count--;
-    pthread_mutex_unlock(&sem->mutex);
-    return 0;
-}
-
-int sem_post(sem_t *sem){
-    pthread_mutex_lock(&sem->mutex);
-    sem->count++;
-    pthread_cond_signal(&sem->cond);
-    pthread_mutex_unlock(&sem->mutex);
-    return 0;
-}
-*/
 
 #endif // PG_SHMEM
