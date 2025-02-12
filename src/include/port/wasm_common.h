@@ -103,6 +103,21 @@ extern int IDB_STAGE;
 */
 extern FILE* SOCKET_FILE;
 extern int SOCKET_DATA;
+extern int pgl_pclose(FILE *stream);
+
+#if !defined(PGL_MAIN) && !defined(PGL_MAIN)
+#   if !defined(PG_EXEC)
+extern int pg_pclose(FILE *stream);
+#define pclose(stream) pg_pclose(stream)
+#   else
+#include <stdio.h>
+int
+pg_pclose(FILE *stream) {
+    puts("# 114:" __FILE__ " int pg_pclose(FILE *stream) STUB");
+    return 0;
+}
+#   endif  // PG_EXEC
+#endif  // pgl
 
 /*
  * OpenPipeStream : another kind of pipe open in fd.c
