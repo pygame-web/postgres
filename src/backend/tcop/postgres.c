@@ -5145,6 +5145,7 @@ ShowUsage(const char *title)
 					 (long) user.tv_usec,
 					 (long) sys.tv_sec,
 					 (long) sys.tv_usec);
+#if !defined(__wasi__)
 #ifndef WIN32
 
 	/*
@@ -5189,7 +5190,7 @@ ShowUsage(const char *title)
 					 r.ru_nivcsw - Save_r.ru_nivcsw,
 					 r.ru_nvcsw, r.ru_nivcsw);
 #endif							/* !WIN32 */
-
+#endif
 	/* remove trailing newline */
 	if (str.data[str.len - 1] == '\n')
 		str.data[--str.len] = '\0';
