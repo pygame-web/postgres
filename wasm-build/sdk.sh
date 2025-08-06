@@ -1,5 +1,40 @@
 #!/bin/bash
-mkdir -p /tmp/sdk
+
+WASI=${WASI:-false}
+SDKROOT=${SDKROOT:-/tmp/sdk}
+mkdir -p ${SDKROOT}
+
+if [ -f /alpine ]
+then
+    cp -f /usr/bin/node ${SDKROOT}/emsdk/node/*.*.*/bin/
+fi
+
+# always install wasmtime because wasm-objdump needs it.
+if [ -f ${SDKROOT}/devices/$(arch)/usr/bin/wasmtime ]
+then
+    echo "keeping installed wasmtime and wasi binaries"
+else
+# TODO: window only has a zip archive, better use wasmtime-py instead.
+    export PLATFORM=$($SYS_PYTHON -E -c "print(__import__('sys').platform)")
+    echo "
+
+    ! wasmtime required ! installing from github release wasmtime-v33.0.0-$(arch)-${PLATFORM}.tar.xz
+
+    "
+
+
+    wget https://github.com/bytecodealliance/wasmtime/releases/download/v33.0.0/wasmtime-v33.0.0-$(arch)-${PLATFORM}.tar.xz \
+     -O-|xzcat|tar xfv -
+    mv -vf $(find wasmtime*|grep /wasmtime$) ${SDKROOT}/devices/$(arch)/usr/bin
+fi
+
+if $WASI
+then
+
+    exit 0
+fi
+
+
 if ${NO_SDK_CHECK:-false}
 then
     exit 0
@@ -39,22 +74,6 @@ else
     fi
 
     pushd /tmp/sdk
-
-#if false
-#then
-#    ${SDKROOT}/emsdk/upstream/bin/wasm-opt --version > ${SDKROOT}/wasm-opt.version
-#    cat > ${SDKROOT}/emsdk/upstream/bin/wasm-opt <<END
-##!/bin/bash
-#if echo \$*|grep -q version$
-#then
-#	echo "$(cat ${SDKROOT}/wasm-opt.version)"
-#else
-#	# echo "\$@" >> /tmp/wasm.opt
-#    exit 0
-#fi
-#END
-#        chmod +x ${SDKROOT}/emsdk/upstream/bin/wasm-opt
-#fi
 
     ALL="-m32 \
 -D_FILE_OFFSET_BITS=64 \
@@ -128,4 +147,6 @@ END
 fi
 
 cat $SDKROOT/VERSION
+
+
 

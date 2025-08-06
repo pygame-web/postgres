@@ -1,4 +1,4 @@
-
+#include <stdlib.h> // for abort
 // WIP: signal here
 // ==================================================================
 #include <signal.h>
@@ -117,8 +117,12 @@ sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
 
 int
 sigfillset (sigset_t *set) {
-  *set = ((2U << (NSIG - 1)) - 1) & ~ SIGABRT_COMPAT_MASK;
-  return 0;
+    // *set = (sigset_t)( ((2U << (NSIG - 1)) - 1) & ~ SIGABRT_COMPAT_MASK );
+    if (set == NULL) {
+        return -1;
+    }
+    *set = ~(sigset_t)0;
+    return 0;
 }
 
 int
@@ -227,7 +231,7 @@ sigprocmask (int operation, const sigset_t *set, sigset_t *old_set) {
                   /* The application changed a signal handler while the signal
                      was blocked, bypassing our rpl_signal replacement.
                      We don't support this.  */
-                  abort ();
+                  abort();
                 received[sig] = pending_array[sig];
                 blocked_set &= ~(1U << sig);
                 pending_array[sig] = 0;
@@ -249,14 +253,7 @@ int sigismember(const sigset_t *set, int signum) {
     return -1;
 }
 
-int
-pthread_sigmask(int how, const sigset_t *set, sigset_t *oldset) {
-    return 0;
-}
 
-int sigpending(sigset_t *set) {
-    return -1;
-}
 
 int sigwait(const sigset_t *restrict set, int *restrict sig) {
     return 0;
@@ -266,6 +263,17 @@ unsigned int alarm(unsigned int seconds) {
     return 0;
 }
 
+/*
+int
+pthread_sigmask(int how, const sigset_t *set, sigset_t *oldset) {
+    return 0;
+}
+
+
+int sigpending(sigset_t *set) {
+    return -1;
+}
+*/
 
 // WIP : shm
 // ========================================================================================
@@ -371,99 +379,70 @@ void wait();
 // void __SIG_IGN(int param) { }
 
 
-FILE *tmpfile(void) {
-    return fopen(mktemp("/tmp/tmpfile"),"w");
-}
-
-
-
-
-
-// unix socket via file emulation using sched_yiedl for event pump.
-// =================================================================================================
-
-#include <sched.h>
-
-volatile int stage = 0;
-volatile int fd_queue = 0;
-volatile int fd_out=2;
-volatile FILE *fd_FILE = NULL;
-
-// default fd is stderr
-int socket(int domain, int type, int protocol) {
-#if 0
-    printf("# 404 : domain =%d type=%d proto=%d -> FORCE FD to 3 \n", domain , type, protocol);
-    return 3;
-#else
-    printf("# 408 : domain =%d type=%d proto=%d\n", domain , type, protocol);
-#endif
-    if (domain|AF_UNIX) {
-        fd_FILE = fopen(PGS_ILOCK, "w");
-        if (fd_FILE) {
-            fd_out = fileno(fd_FILE);
-            printf("# 414: AF_UNIX sock=%d (fd_sock write) FILE=%s\n", fd_out, PGS_ILOCK);
-        } else {
-            printf("# 416: AF_UNIX ERROR OPEN (w/w+) FILE=%s\n", PGS_ILOCK);
-            abort();
-        }
-    }
-    return fd_out;
-}
-
-int connect(int socket, void *address, socklen_t address_len) {
-#if 1
-    puts("# 425: connect STUB");
-    //fd_out = 3;
-    return 0;
-#else
-    puts("# 429: connect EINPROGRESS");
-    errno = EINPROGRESS;
+pid_t waitpid(pid_t pid, int *status, int options) {
+    fputs(__FILE__ ": pid_t waitpid(pid_t pid, int *status, int options) STUB", stderr);
     return -1;
-#endif
 }
 
-ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, void *dest_addr, socklen_t addrlen) {
-    int sent = write( fd_out, buf, len);
 
-    printf("# 438: send/sendto(%d ?= %ld )/%zu sockfd=%d fno=%d fd_out=%d)\n", sent, ftell(fd_FILE), len, sockfd, fileno(fd_FILE), fd_out);
-    fd_queue+=sent;
-    return sent;
-}
 
-ssize_t sdk_send(int sockfd, const void *buf, size_t len, int flags) {
-    return sendto(sockfd, buf, len, flags, NULL, 0);
-}
+
+
+// *********************************************************************************************
+// *********************************************************************************************
+// *********************************************************************************************
+// *********************************************************************************************
+
+
+
+
+#ifndef __wasi__p2
+
+
+volatile FILE *fd_FILE = NULL;
+volatile int fd_sock = 0;
+volatile int fd_out = 2;
+volatile int fd_queue = 0;
+
+
+
+
+#if 0
+#define AF_UNIX 1 // PF_LOCAL
+
+
+
 
 volatile bool web_warned = false;
 
 void sock_flush() {
     if (fd_queue) {
-        printf(" -- 451 sockflush : AIO YIELD, expecting %s filled on return --\n", PGS_OUT);
+        printf(" -- 441 sockflush : AIO YIELD, expecting %s filled on return --\n", PGS_OUT);
         if (!fd_FILE) {
             if (!web_warned) {
-                puts("# 454: WARNING: fd_FILE not set but queue not empty, assuming web");
+                puts("# 444: WARNING: fd_FILE not set but queue not empty, assuming web");
                 web_warned = true;
             }
 
          } else {
-            printf("#       459: SENT=%ld/%d fd_out=%d fno=%d\n", ftell(fd_FILE), fd_queue, fd_out, fileno(fd_FILE));
+            printf("#       449: SENT=%ld/%d fd_out=%d fno=%d\n", ftell(fd_FILE), fd_queue, fd_out, fileno(fd_FILE));
             fclose(fd_FILE);
             rename(PGS_ILOCK, PGS_IN);
 //freopen(PGS_ILOCK, "w+", fd_FILE);
             fd_FILE = fopen(PGS_ILOCK, "w");
             fd_out = fileno(fd_FILE);
-            printf("#       465: fd_out=%d fno=%d\n", fd_out, fileno(fd_FILE));
+            printf("#       455: fd_out=%d fno=%d\n", fd_out, fileno(fd_FILE));
         }
         fd_queue = 0;
         sched_yield();
         return;
     }
 
-    printf(" -- 472 sockflush[%d] : NO YIELD --\n",stage);
+    printf(" -- 462 sockflush[%d] : NO YIELD --\n",stage);
 
     // limit inf loops
     if (stage++ > 1024) {
-        puts("# 476 sock_flush : busy looping ?");
+        puts("# 466 sock_flush : busy looping ?");
         abort();
     }
 }
@@ -518,78 +497,13 @@ ssize_t recvfrom_bc(int socket, void *buffer, size_t length, int flags, void *ad
         unlink(PGS_OUT);
 
     } else {
-        printf("# 529: recvfrom_bc(%s max=%d) ERROR\n", PGS_OUT, length);
+        printf("# 521: recvfrom_bc(%s max=%d) ERROR\n", PGS_OUT, length);
         errno = EINTR;
     }
     return rcv;
 
 }
 
+#endif
 
-ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, void *address, socklen_t *address_len) {
-    int busy = 0;
-    int rcv = -1;
-    sock_flush();
-
-/*
-    while (access(PGS_OUT, F_OK) != 0) {
-        if (!(++busy % 555111)) {
-            printf("# 471: FIXME: busy wait (%d) for input stream %s\n", busy, PGS_OUT);
-        }
-        if (busy>1665334) {
-            errno = EINTR;
-            return -1;
-        }
-    }
-*/
-    FILE *sock_in = fopen(PGS_OUT,"r");
-    if (sock_in) {
-        if (!fd_filesize) {
-            fseek(sock_in, 0L, SEEK_END);
-            fd_filesize = ftell(sock_in);
-        }
-        fseek(sock_in, fd_current_pos, SEEK_SET);
-
-        char *buf = buffer;
-        buf[0] = 0;
-        rcv = fread(buf, 1, length, sock_in);
-
-        if (rcv<fd_filesize) {
-            fd_current_pos = ftell(sock_in);
-            if (fd_current_pos<fd_filesize) {
-                printf("# 568: recvfrom(%s max=%d) block=%d read=%d / %d\n", PGS_OUT, length, rcv, fd_current_pos, fd_filesize);
-                fclose(sock_in);
-                return rcv;
-            }
-        }
-
-        // fully read
-        printf("# 575: recvfrom(%s max=%d total=%d) read=%d\n", PGS_OUT, length, fd_filesize, rcv);
-        fd_queue = 0;
-        fd_filesize = 0;
-        fd_current_pos = 0;
-        fclose(sock_in);
-        unlink(PGS_OUT);
-
-    } else {
-        printf("# 583: recvfrom(%s max=%d) ERROR\n", PGS_OUT, length);
-        errno = EINTR;
-    }
-    return rcv;
-}
-
-
-ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
-    return recvfrom(sockfd, buf, len, flags, NULL, NULL);
-}
-
-
-pid_t waitpid(pid_t pid, int *status, int options) {
-    fputs(__FILE__ ": pid_t waitpid(pid_t pid, int *status, int options) STUB", stderr);
-    return -1;
-}
-
-pid_t sdk_getpid(void) {
-    return (pid_t)42;
-}
-
+#endif // __wasi__p2

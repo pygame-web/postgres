@@ -30,13 +30,6 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres_fe.h"
-#if !defined(__EMSCRIPTEN__) && !defined(__wasi__)
-#ifdef quote_all_identifiers
-#undef quote_all_identifiers
-#endif
-#define fe_utils_quote_all_identifiers quote_all_identifiers
-static bool quote_all_identifiers;
-#endif
 
 #include <unistd.h>
 #include <ctype.h>
@@ -75,6 +68,30 @@ static bool quote_all_identifiers;
 #include "pg_backup_utils.h"
 #include "pg_dump.h"
 #include "storage/block.h"
+
+#if !defined(__wasi__) && !defined(__EMSCRIPTEN__)
+extern PGDLLIMPORT bool fe_utils_quote_all_identifiers;
+#else
+#if defined(WASM)
+#ifdef errno
+    #undef errno
+    int errno;
+#endif
+
+pid_t fork(void) {
+    return -1;
+}
+
+#   include <wasi/api.h>
+
+__attribute__((export_name("sdk_fd_seek")))
+int sdk_fd_seek(int fd, int  offset,int  whence, unsigned long long *retptr) {
+    puts("sdk_fd_seek called !");
+    return __wasi_fd_seek(fd, offset, whence, retptr);
+}
+
+#endif
+#endif
 
 typedef struct
 {
@@ -432,7 +449,7 @@ main(int argc, char **argv)
 		{"lock-wait-timeout", required_argument, NULL, 2},
 		{"no-table-access-method", no_argument, &dopt.outputNoTableAm, 1},
 		{"no-tablespaces", no_argument, &dopt.outputNoTablespaces, 1},
-		{"quote-all-identifiers", no_argument, &fe_utils_quote_all_identifiers, true},
+		{"quote-all-identifiers", no_argument, (int *)(&fe_utils_quote_all_identifiers), 1},
 		{"load-via-partition-root", no_argument, &dopt.load_via_partition_root, 1},
 		{"role", required_argument, NULL, 3},
 		{"section", required_argument, NULL, 5},
@@ -459,9 +476,7 @@ main(int argc, char **argv)
 
 		{NULL, 0, NULL, 0}
 	};
-#if defined(__wasi__)
-chdir("/");
-#endif
+
 	pg_logging_init(argv[0]);
 	pg_logging_set_level(PG_LOG_WARNING);
 	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_dump"));
@@ -838,17 +853,15 @@ chdir("/");
 	fout->maxRemoteVersion = (PG_VERSION_NUM / 100) * 100 + 99;
 
 	fout->numWorkers = numWorkers;
-
+puts("# 832:" __FILE__ ": ConnectDatabase\r\n");
 	/*
 	 * Open the database using the Archiver, so it knows about it. Errors mean
 	 * death.
 	 */
-puts("# 813 : " __FILE__);
-    //setup();
 	ConnectDatabase(fout, &dopt.cparams, false);
-puts("# 815 : " __FILE__);
+puts("# 838:" __FILE__ ": ConnectDatabase->setup_connection\r\n");
 	setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
-puts("# 817 : " __FILE__);
+
 	/*
 	 * On hot standbys, never try to dump unlogged table data, since it will
 	 * just throw an error.
@@ -1203,10 +1216,9 @@ setup_connection(Archive *AH, const char *dumpencoding,
 				 const char *dumpsnapshot, char *use_role)
 {
 	DumpOptions *dopt = AH->dopt;
-puts("# 1164 : get_connection : "__FILE__);
 	PGconn	   *conn = GetConnection(AH);
 	const char *std_strings;
-puts("# 1164 : setup_connection");
+
 	PQclear(ExecuteSqlQueryForSingleRow(AH, ALWAYS_SECURE_SEARCH_PATH_SQL));
 
 	/*
@@ -1295,7 +1307,7 @@ puts("# 1164 : setup_connection");
 	 * Quote all identifiers, if requested.
 	 */
 	if (fe_utils_quote_all_identifiers)
-		ExecuteSqlStatement(AH, "SET fe_utils_quote_all_identifiers = true");
+		ExecuteSqlStatement(AH, "SET quote_all_identifiers = true");
 
 	/*
 	 * Adjust row-security mode, if supported.
