@@ -173,3 +173,4 @@ pqsignal(int signo, pqsigfunc func)
 		return ret;
 #endif
 }
+

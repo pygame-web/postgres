@@ -30,6 +30,13 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres_fe.h"
+#if !defined(__EMSCRIPTEN__) && !defined(__wasi__)
+#ifdef quote_all_identifiers
+#undef quote_all_identifiers
+#endif
+#define fe_utils_quote_all_identifiers quote_all_identifiers
+static bool quote_all_identifiers;
+#endif
 
 #include <unistd.h>
 #include <ctype.h>
@@ -425,7 +432,7 @@ main(int argc, char **argv)
 		{"lock-wait-timeout", required_argument, NULL, 2},
 		{"no-table-access-method", no_argument, &dopt.outputNoTableAm, 1},
 		{"no-tablespaces", no_argument, &dopt.outputNoTablespaces, 1},
-		{"quote-all-identifiers", no_argument, &quote_all_identifiers, 1},
+		{"quote-all-identifiers", no_argument, (int *)(&fe_utils_quote_all_identifiers), true},
 		{"load-via-partition-root", no_argument, &dopt.load_via_partition_root, 1},
 		{"role", required_argument, NULL, 3},
 		{"section", required_argument, NULL, 5},
@@ -452,7 +459,9 @@ main(int argc, char **argv)
 
 		{NULL, 0, NULL, 0}
 	};
-
+#if defined(__wasi__)
+chdir("/");
+#endif
 	pg_logging_init(argv[0]);
 	pg_logging_set_level(PG_LOG_WARNING);
 	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_dump"));
@@ -1281,7 +1290,7 @@ setup_connection(Archive *AH, const char *dumpencoding,
 	/*
 	 * Quote all identifiers, if requested.
 	 */
-	if (quote_all_identifiers)
+	if (fe_utils_quote_all_identifiers)
 		ExecuteSqlStatement(AH, "SET quote_all_identifiers = true");
 
 	/*
